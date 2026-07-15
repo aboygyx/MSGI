@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 
 # Load the dataset
-df_loaded = pd.read_csv('dataset/data试验/task1 1-2.csv')
+df_loaded = pd.read_csv('')
 
 # Separate features (X) and the target variable (y)
 X = df_loaded.iloc[:, :-1]
