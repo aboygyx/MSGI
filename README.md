@@ -61,19 +61,24 @@ timm==1.0.15
 einops
 
 numpy==1.26.4
-pandas
-scipy==1.13.1
-scikit-learn
+pandas==2.2.2
 
-networkx
-BorutaShap
-shap
+scipy==1.13.1
+scikit-learn==1.5.1
+networkx==3.3
+
+BorutaShap==1.0.17
+shap==0.46.0
+
+joblib==1.4.2
+numba==0.60.0
+llvmlite==0.43.0
 
 matplotlib==3.9.1
-seaborn
+seaborn==0.13.2
 
 tqdm==4.67.1
-PyYAML
+PyYAML==6.0.2
 ```
 
 ---
