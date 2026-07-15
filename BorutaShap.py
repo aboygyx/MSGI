@@ -2,6 +2,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
+import sys
 
 # Load the dataset
 df_loaded = pd.read_csv('')
@@ -45,7 +46,9 @@ print(f"Total Parameters: {total_params:,}")
 print(f"Trainable Parameters: {trainable_params:,}\n")
 
 # %% Boruta-SHAP Feature Selection
+_local_path = sys.path.pop(0)
 from BorutaShap import BorutaShap
+sys.path.insert(0, _local_path)
 import matplotlib.pyplot as plt
 
 # Initialize the Boruta-SHAP selector
