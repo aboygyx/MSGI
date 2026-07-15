@@ -15,6 +15,10 @@ from models.MDM import MDM
 from einops import rearrange
 
 class Informer(nn.Module):
+    """
+    Standard Informer architecture for long sequence time-series forecasting.
+    Utilizes ProbSparse Attention to reduce computational complexity.
+    """
     def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
                  factor=5, d_model=512, n_heads=8, e_layers=3, d_layers=2, d_ff=128,
                  dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
@@ -25,15 +29,16 @@ class Informer(nn.Module):
         self.attn = attn
         self.output_attention = output_attention
 
-        # Encoding
+        # Encoding: embed temporal features and positional information
         self.enc_embedding = DataEmbedding(
             enc_in, d_model, embed, freq, dropout)
         self.dec_embedding = DataEmbedding(
             dec_in, d_model, embed, freq, dropout)
-        # Attention
+            
+        # Attention mechanism selection (ProbSparse or Full Attention)
         Attn = ProbAttention if attn == 'prob' else FullAttention
 
-        # Encoder
+        # Encoder: stacks attention layers and optional distillation (Conv1d) layers
         self.encoder = Encoder(
             [
                 EncoderLayer(
@@ -52,7 +57,8 @@ class Informer(nn.Module):
             ] if distil else None,
             norm_layer=torch.nn.LayerNorm(d_model)
         )
-        # Decoder
+        
+        # Decoder: incorporates self-attention and cross-attention with encoder outputs
         self.decoder = Decoder(
             [
                 DecoderLayer(
@@ -69,27 +75,34 @@ class Informer(nn.Module):
             ],
             norm_layer=torch.nn.LayerNorm(d_model)
         )
-        # self.end_conv1 = nn.Conv1d(in_channels=label_len+out_len, out_channels=out_len, kernel_size=1, bias=True)
-        # self.end_conv2 = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=1, bias=True)
+        
+        # Final linear projection to map the deep features to target dimensions
         self.projection = nn.Linear(d_model, c_out, bias=True)
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
+        # Encoder forward pass
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
+        # Decoder forward pass
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(
             dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
-        # 32 x 72 x 512
+            
+        # Projection to the output dimension
         dec_out = self.projection(dec_out)
+        
         if self.output_attention:
             return dec_out[:, -self.pred_len:, :], attns
         else:
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return dec_out[:, -self.pred_len:, :]  # Shape: [B, L, D]
 
 
 class InformerStack(nn.Module):
+    """
+    Informer with stacked encoders of different lengths to capture multi-scale temporal patterns.
+    """
     def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
                  factor=5, d_model=512, n_heads=8, e_layers=[3, 2, 1], d_layers=2, d_ff=512,
                  dropout=0.0, attn='prob', embed='fixed', freq='h', activation='gelu',
@@ -100,22 +113,22 @@ class InformerStack(nn.Module):
         self.attn = attn
         self.output_attention = output_attention
 
-        # Encoding
+        # Encoding configurations
         self.enc_embedding = DataEmbedding(
             enc_in, d_model, embed, freq, dropout)
         self.dec_embedding = DataEmbedding(
             dec_in, d_model, embed, freq, dropout)
-        # Attention
+            
+        # Attention mechanism selection
         Attn = ProbAttention if attn == 'prob' else FullAttention
-        # Encoder
-
-        # [0,1,2,...] you can customize here
+        
+        # Encoder: Create multiple encoders for stacked multi-scale inputs
+        # Example: [0, 1, 2, ...] defines the input sequence subsets
         inp_lens = list(range(len(e_layers)))
         encoders = [
             Encoder(
                 [
                     EncoderLayer(
-
                         AttentionLayer(
                             Attn(False, factor, attention_dropout=dropout, output_attention=output_attention),
                             d_model, n_heads, mix=False),
@@ -133,7 +146,8 @@ class InformerStack(nn.Module):
                 norm_layer=torch.nn.LayerNorm(d_model)
             ) for el in e_layers]
         self.encoder = EncoderStack(encoders, inp_lens)
-        # Decoder
+        
+        # Decoder configurations
         self.decoder = Decoder(
             [
                 DecoderLayer(
@@ -150,35 +164,35 @@ class InformerStack(nn.Module):
             ],
             norm_layer=torch.nn.LayerNorm(d_model)
         )
-        # self.end_conv1 = nn.Conv1d(in_channels=label_len+out_len, out_channels=out_len, kernel_size=1, bias=True)
-        # self.end_conv2 = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=1, bias=True)
+        
+        # Output projection layer
         self.projection = nn.Linear(d_model, c_out, bias=True)
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
+        # Encoder forward pass with stacked architecture
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
+        # Decoder forward pass
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(
             dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
+            
+        # Final projection
         dec_out = self.projection(dec_out)
 
-        # dec_out = self.end_conv1(dec_out)
-        # dec_out = self.end_conv2(dec_out.transpose(2,1)).transpose(1,2)
         if self.output_attention:
             return dec_out[:, -self.pred_len:, :], attns
         else:
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            return dec_out[:, -self.pred_len:, :]  # Shape: [B, L, D]
 
 
-
-
-
-
-
-class DGI22(nn.Module):
-
+class MSGI(nn.Module):
+    """
+    Integrates MDM module for marginal distribution modeling and GCKM for feature graph convolutions,
+    followed by the standard Informer encoder-decoder structure.
+    """
     def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len,
                  gamma_list=[0.1, 0.05], factor=5, d_model=512, n_heads=8,
                  e_layers=3, d_layers=2, d_ff=512,
@@ -196,23 +210,23 @@ class DGI22(nn.Module):
         self.seq_len = seq_len
 
         # ======================================================
-        # ① MDM 模块（不变）
+        # 1. MDM Module
         # ======================================================
         self.mdm = MDM(
-            input_shape=(seq_len, enc_in),   # (L, D)
+            input_shape=(seq_len, enc_in),   # Shape: (L, D)
             k=2,
             c=2,
             layernorm=True
         )
 
         # ======================================================
-        # ② 特征图卷积（GCKM）
+        # 2. Feature Graph Convolution (GCKM)
         # ======================================================
         self.gckm = GCKM(gamma_list)
         self.gckm_map = nn.Linear(seq_len, seq_len)
 
         # ======================================================
-        # ③ Embedding
+        # 3. Embedding
         # ======================================================
         self.enc_embedding = DataEmbedding(enc_in, d_model, embed, freq, dropout)
         self.dec_embedding = DataEmbedding(dec_in, d_model, embed, freq, dropout)
@@ -220,7 +234,7 @@ class DGI22(nn.Module):
         Attn = ProbAttention if attn == 'prob' else FullAttention
 
         # ======================================================
-        # ④ Encoder
+        # 4. Encoder
         # ======================================================
         self.encoder = Encoder(
             [
@@ -243,7 +257,7 @@ class DGI22(nn.Module):
         )
 
         # ======================================================
-        # ⑤ Decoder
+        # 5. Decoder
         # ======================================================
         self.decoder = Decoder(
             [
@@ -272,68 +286,71 @@ class DGI22(nn.Module):
         self.projection = nn.Linear(d_model, c_out, bias=True)
 
     # ======================================================
-    # 构建特征邻接矩阵
+    # Build Feature Adjacency Matrix
     # ======================================================
     def build_feature_adj(self, x):
         """
-        x: [B, L, D]
-        return: [B, D, D]
+        Calculates the adjacency matrix based on Euclidean distance between features.
+        Input: x -> [B, L, D]
+        Output: adj -> [B, D, D]
         """
-        # 将每个特征视为一个节点，其节点属性是时间序列
-        x_feat = x.permute(0, 2, 1)  # [B, D, L]
+        # Treat each feature as a node, where its attributes are the time series values
+        x_feat = x.permute(0, 2, 1)  # Shape: [B, D, L]
 
-        dist = torch.cdist(x_feat, x_feat, p=2)  # [B, D, D]
+        # Calculate pairwise L2 distance between features
+        dist = torch.cdist(x_feat, x_feat, p=2)  # Shape: [B, D, D]
         adj = torch.exp(-(dist ** 2))
 
         return adj
 
     # ======================================================
-    # forward
+    # Forward Pass
     # ======================================================
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         """
-        x_enc: [B, L, D]
+        x_enc: input time-series tensor of shape [B, L, D]
         """
         B, L, D = x_enc.size()
 
         # ------------------------------------------------------
-        # ① MDM
+        # Step 1: MDM (Marginal Distribution Module)
         # ------------------------------------------------------
-        x_mdm = self.mdm(x_enc.permute(0, 2, 1))   # [B, D, L]
-        x_enc = x_mdm.permute(0, 2, 1)             # [B, L, D]
+        x_mdm = self.mdm(x_enc.permute(0, 2, 1))   # Shape: [B, D, L]
+        x_enc = x_mdm.permute(0, 2, 1)             # Shape: [B, L, D]
 
         # ------------------------------------------------------
-        # ② 特征邻接矩阵
+        # Step 2: Build Feature Adjacency Matrix
         # ------------------------------------------------------
-        adj = self.build_feature_adj(x_enc)        # [B, D, D]
+        adj = self.build_feature_adj(x_enc)        # Shape: [B, D, D]
 
         # ------------------------------------------------------
-        # ③ 特征图卷积（GCKM）
+        # Step 3: Feature Graph Convolution (GCKM)
         # ------------------------------------------------------
         gckm_out = []
         for b in range(B):
-            # 节点特征：[D, L]
-            x_feat = x_enc[b].permute(1, 0)        # [D, L]
+            # Extract node features for the current batch item: [D, L]
+            x_feat = x_enc[b].permute(1, 0)        # Shape: [D, L]
 
-            K = self.gckm(adj[b], x_feat)          # [D, D]
-            K_agg = torch.matmul(K, x_feat)        # [D, L]
-            K_map = self.gckm_map(K_agg)            # [D, L]
+            # Apply GCKM kernel and aggregate features
+            K = self.gckm(adj[b], x_feat)          # Shape: [D, D]
+            K_agg = torch.matmul(K, x_feat)        # Shape: [D, L]
+            K_map = self.gckm_map(K_agg)           # Shape: [D, L]
 
-            # 残差
+            # Residual connection to preserve original features
             out = x_feat + K_map
-            gckm_out.append(out.permute(1, 0))     # [L, D]
+            gckm_out.append(out.permute(1, 0))     # Shape: [L, D]
 
-        x_enc = torch.stack(gckm_out, dim=0)       # [B, L, D]
+        x_enc = torch.stack(gckm_out, dim=0)       # Shape: [B, L, D]
 
         # ------------------------------------------------------
-        # ④ Encoder
+        # Step 4: Encoder pass
         # ------------------------------------------------------
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
 
         # ------------------------------------------------------
-        # ⑤ Decoder
+        # Step 5: Decoder pass
         # ------------------------------------------------------
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(
@@ -342,10 +359,10 @@ class DGI22(nn.Module):
             cross_mask=dec_enc_mask
         )
 
+        # Final projection to match output dimension
         dec_out = self.projection(dec_out)
 
         if self.output_attention:
             return dec_out[:, -self.pred_len:, :], attns
         else:
             return dec_out[:, -self.pred_len:, :]
-
