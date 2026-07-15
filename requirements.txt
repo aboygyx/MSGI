@@ -1,0 +1,26 @@
+# ==========================
+# MSGI Requirements
+# Python 3.9
+# ==========================
+
+# Deep Learning
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1
+timm==1.0.15
+einops
+
+# Scientific Computing
+numpy==1.26.4
+pandas
+scipy==1.13.1
+scikit-learn
+networkx
+
+# Visualization
+matplotlib==3.9.1
+seaborn
+
+# Utilities
+tqdm==4.67.1
+PyYAML
