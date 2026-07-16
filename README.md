@@ -210,7 +210,7 @@ The SHAP summary plot visually explains the model's decision-making process by h
 
 The figure below compares the actual Time-to-Aging-Failure (TTAF) trajectories with our model's predictions. As illustrated, MSGI accurately captures the nonlinear degradation trends and precisely estimates the failure points under complex operating conditions.
 
-[曲线结果可视化.pdf](https://github.com/user-attachments/files/30088662/default.pdf)
+<img width="3754" height="1659" alt="曲线结果可视化" src="https://github.com/user-attachments/assets/d37f70ac-e8ee-4915-9319-f870079527fd" />
 
 Note: The complete set of visualization results can be reproduced by running the evaluation scripts provided in this repository.
 
