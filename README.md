@@ -198,6 +198,22 @@ Evaluates the goodness-of-fit between predictions and ground truth values.
 
 ---
 
+# Quick Start
+
+To intuitively demonstrate the effectiveness and interpretability of the MSGI framework, we provide the following visualization results:
+
+## Feature Importance (Boruta-SHAP)
+
+The SHAP summary plot visually explains the model's decision-making process by highlighting the impact of different system metrics on aging prediction. It confirms that specific indicators (e.g., memory utilization and system load) play dominant roles in the software aging evolution.
+
+## TTAF Prediction Performance
+
+The figure below compares the actual Time-to-Aging-Failure (TTAF) trajectories with our model's predictions. As illustrated, MSGI accurately captures the nonlinear degradation trends and precisely estimates the failure points under complex operating conditions.
+
+[曲线结果可视化.pdf](https://github.com/user-attachments/files/30088662/default.pdf)
+
+Note: The complete set of visualization results can be reproduced by running the evaluation scripts provided in this repository.
+
 # Project Structure
 
 ```
