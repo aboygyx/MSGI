@@ -266,20 +266,6 @@ The experimental environment, dependency versions, and implementation details ar
 
 ---
 
-# Citation
-
-If you find this repository useful for your research, please cite:
-
-```bibtex
-@article{MSGI,
-  title={MSGI: Feature Selection Enhanced Multiscale Graph Informer for Predicting the Time to Aging Failure of Software Systems},
-  author={},
-  journal={},
-  year={}
-}
-```
-
----
 
 # Contact
 
