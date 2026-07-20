@@ -200,7 +200,7 @@ class MSGI(nn.Module):
                  activation='gelu', output_attention=False, distil=True,
                  mix=True, device=torch.device('cuda:0')):
 
-        super(DGI22, self).__init__()
+        super(MSGI, self).__init__()
         self.pred_len = out_len
         self.attn = attn
         self.output_attention = output_attention
