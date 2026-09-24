@@ -206,7 +206,8 @@ To intuitively demonstrate the effectiveness and interpretability of the MSGI fr
 
 The SHAP summary plot visually explains the model's decision-making process by highlighting the impact of different system metrics on aging prediction. It confirms that specific indicators (e.g., memory utilization and system load) play dominant roles in the software aging evolution.
 
-<img width="3019" height="1622" alt="BorutaSHAP可视化 " src="https://github.com/user-attachments/assets/61e63b0b-db68-4a21-ac61-b41b38785268" />
+<img width="3019" height="1622" alt="BorutaSHAP可视化 " src="https://github.com/user-attachments/assets/61e63b0b-db68-4a21-ac61-b41b38785268" />[BorutaSHAP可视化 .pdf](https://github.com/user-attachments/files/32589598/BorutaSHAP.pdf)
+
 
 ## TTAF Prediction Performance
 
